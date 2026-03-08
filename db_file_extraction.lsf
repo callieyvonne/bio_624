@@ -1,0 +1,42 @@
+#!/bin/bash
+#BSUB -J humann_extract
+#BSUB -o humann_extract_%J.out
+#BSUB -e humann_extract_%J.err
+#BSUB -n 2
+#BSUB -W 10:00
+#BSUB -R "rusage[mem=8]"
+#BSUB -q long
+
+echo "Starting HUMAnN database extraction at $(date)"
+
+#############################
+# 1. Define file locations  #
+#############################
+
+# Compressed tarballs
+CHOC_TAR="/rs1/shares/brc/users/cysteger/databases/chocophlan.v4_alpha.tar.gz"
+UNIREF_TAR="/rs1/shares/brc/users/cysteger/databases/biobakery/uniref90_annotated_v4_alpha_ec_filtered.tar.gz"
+UTIL_TAR="/rs1/shares/brc/users/cysteger/databases/biobakery/full_mapping_v4_alpha.tar.gz"
+
+# Destination directories
+CHOC_DIR="/rs1/shares/brc/users/cysteger/databases/biobakery/chocophlan_db"
+UNIREF_DIR="/rs1/shares/brc/users/cysteger/databases/biobakery/uniref_db"
+UTIL_DIR="/rs1/shares/brc/users/cysteger/databases/biobakery/utility_mapping_db"
+
+###########################################
+# 2. Extract each database independently  #
+###########################################
+
+echo "Extracting ChocoPhlAn..."
+tar -xzf "$CHOC_TAR" -C "$CHOC_DIR"
+echo "ChocoPhlAn extraction complete."
+
+echo "Extracting UniRef90 EC-filtered..."
+tar -xzf "$UNIREF_TAR" -C "$UNIREF_DIR"
+echo "UniRef extraction complete."
+
+echo "Extracting Utility Mapping..."
+tar -xzf "$UTIL_TAR" -C "$UTIL_DIR"
+echo "Utility Mapping extraction complete."
+
+echo "All HUMAnN database extractions finished at $(date)"
