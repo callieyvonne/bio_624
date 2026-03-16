@@ -1,0 +1,76 @@
+#!/bin/bash
+#BSUB -J humann_all_samples
+#BSUB -o biobakery_pipeline.%J.out
+#BSUB -e biobakery_pipeline.%J.err
+#BSUB -n 16
+#BSUB -W 120:00
+#BSUB -R "rusage[mem=64]"
+#BSUB -q long
+
+set -euo pipefail
+
+# Directories
+R1_DIR=/rs1/shares/brc/users/c_s_group_3/callie_analysis/qc_results
+R2_DIR=/rs1/shares/brc/users/c_s_group_3/callie_analysis/qc_results
+OUTDIR=/rs1/shares/brc/users/c_s_group_3/callie_analysis/biobakery_analysis/all_samples
+
+MPA_DB=/rs1/shares/brc/users/cysteger/databases/lyu_lab_biobkaery_dbs/metaphlan_databases
+CHOCOPHLAN_DB=/rs1/shares/brc/users/cysteger/databases/lyu_lab_biobkaery_dbs/humann_databases/data/chocophlan
+UNIREf_DB=/rs1/shares/brc/users/cysteger/databases/lyu_lab_biobkaery_dbs/humann_databases/data/uniref
+PATHWAYS_DB=/rs1/shares/brc/users/cysteger/databases/lyu_lab_biobkaery_dbs/humann_databases/data/pathways/metacyc_pathways_structured_filtered_v24_subreactions
+
+mkdir -p "$OUTDIR"
+
+echo "===== Starting multi-sample HUMAnN pipeline ====="
+date
+
+for R1 in ${R1_DIR}/*_R1.trimmed.fastq.gz; do
+    sample=$(basename "$R1" | sed 's/_R1.trimmed.fastq.gz//')
+    R2=${R2_DIR}/${sample}_R2.trimmed.fastq.gz
+
+    echo "--------------------------------------------------"
+    echo "Processing sample: $sample"
+    date
+
+    SAMPLE_OUT=$OUTDIR/$sample
+    mkdir -p "$SAMPLE_OUT"
+
+    LOG=$SAMPLE_OUT/${sample}_pipeline.log
+    echo "Logging to: $LOG"
+
+    echo "[${sample}] Step 1: Running MetaPhlAn" | tee -a "$LOG"
+    metaphlan \
+        ${R1},${R2} \
+        --input_type fastq \
+        --bowtie2db "$MPA_DB" \
+        --offline \
+        --no_map \
+        --nproc 16 \
+        --bowtie2out "$SAMPLE_OUT/${sample}_bowtie2.txt" \
+        -o "$SAMPLE_OUT/${sample}_profile.txt" \
+        2>&1 | tee -a "$LOG"
+
+    if [ ! -f "$SAMPLE_OUT/${sample}_profile.txt" ]; then
+        echo "[${sample}] ERROR: MetaPhlAn failed" | tee -a "$LOG"
+        continue
+    fi
+
+    echo "[${sample}] Step 2: Running HUMAnN" | tee -a "$LOG"
+    humann \
+        --input "$R1" \
+        --taxonomic-profile "$SAMPLE_OUT/${sample}_profile.txt" \
+        --output "$SAMPLE_OUT" \
+        --threads 16 \
+        --nucleotide-database "$CHOCOPHLAN_DB" \
+        --protein-database "$UNIREf_DB" \
+        --pathways-database "$PATHWAYS_DB" \
+        --output-basename "$sample" \
+        --o-log "$SAMPLE_OUT/${sample}_humann.log" \
+        2>&1 | tee -a "$LOG"
+
+    echo "[${sample}] Completed" | tee -a "$LOG"
+    date
+done
+
+echo "===== Pipeline complete ====="
+date
