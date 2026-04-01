@@ -1,0 +1,81 @@
+#!/bin/bash
+#BSUB -J merge_humann_all
+#BSUB -o /rs1/shares/brc/users/c_s_group_3/callie_analysis/biobakery_analysis/all_samples/merge_humann_all.%J.out
+#BSUB -e /rs1/shares/brc/users/c_s_group_3/callie_analysis/biobakery_analysis/all_samples/merge_humann_all.%J.err
+#BSUB -n 4
+#BSUB -W 2:00
+#BSUB -R "rusage[mem=8]"
+#BSUB -q short
+
+set -euo pipefail
+
+# Activate conda
+# conda activate /rs1/shares/brc/users/cysteger/conda_envs/biobakery_env
+
+###############################################
+# Directories
+###############################################
+SAMPLEDIR="/rs1/shares/brc/users/c_s_group_3/callie_analysis/biobakery_analysis/all_samples"
+OUTDIR="$SAMPLEDIR"
+MERGEDIR="$OUTDIR/humann_merge_inputs"
+
+echo "===== HUMAnN MERGE PIPELINE START ====="
+date
+
+###############################################
+# Create merge directory and symlink all TSVs
+###############################################
+rm -rf "$MERGEDIR"
+mkdir -p "$MERGEDIR"
+
+echo "Linking HUMAnN output files..."
+find "$SAMPLEDIR" -maxdepth 2 -type f -name "*genefamilies.tsv" -exec ln -s {} "$MERGEDIR" \;
+find "$SAMPLEDIR" -maxdepth 2 -type f -name "*pathabundance.tsv" -exec ln -s {} "$MERGEDIR" \;
+
+###############################################
+# 1. Merge gene families
+###############################################
+echo "Merging genefamilies..."
+humann_join_tables \
+    --input "$MERGEDIR" \
+    --file_name genefamilies.tsv \
+    --output "$OUTDIR/humann_genefamilies_merged.tsv"
+
+###############################################
+# 2. Merge pathway abundance
+###############################################
+echo "Merging pathabundance..."
+humann_join_tables \
+    --input "$MERGEDIR" \
+    --file_name pathabundance.tsv \
+    --output "$OUTDIR/humann_pathabundance_merged.tsv"
+
+###############################################
+# 3. Normalize pathways to relative abundance
+###############################################
+echo "Normalizing pathways to relative abundance..."
+humann_renorm_table \
+    --input "$OUTDIR/humann_pathabundance_merged.tsv" \
+    --output "$OUTDIR/humann_pathabundance_relab.tsv" \
+    --units relab
+
+###############################################
+# 4. Regroup gene families to EC numbers
+###############################################
+echo "Regrouping to EC numbers..."
+humann_regroup_table \
+    --input "$OUTDIR/humann_genefamilies_merged.tsv" \
+    --groups uniref90_rxn \
+    --output "$OUTDIR/humann_ec_rxn.tsv"
+
+###############################################
+# 5. Normalize EC to CPM
+###############################################
+echo "Normalizing EC to CPM..."
+humann_renorm_table \
+    --input "$OUTDIR/humann_ec_rxn.tsv" \
+    --output "$OUTDIR/humann_ec_rxn_cpm.tsv" \
+    --units cpm
+
+echo "===== HUMAnN MERGE PIPELINE COMPLETE ====="
+date
