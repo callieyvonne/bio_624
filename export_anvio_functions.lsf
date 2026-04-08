@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#BSUB -J "export_anvio_functions[1-2458]"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=8]"
+#BSUB -W 240:00
+#BSUB -q long
+#BSUB -o /rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_log_files/export_funcs.%J.%I.out
+#BSUB -e /rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_log_files/export_funcs.%J.%I.err
+
+# CHANGE TO THE DIRECTORY WITH THE .db FILES
+cd /rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/all_MAGs
+
+OUT_DIR="/rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/functions"
+mkdir -p "${OUT_DIR}"
+
+DB_LIST="db_list.txt"
+
+DB=$(sed -n "${LSB_JOBINDEX}p" "${DB_LIST}")
+BASE=$(basename "${DB}" .db)
+OUTFILE="${OUT_DIR}/${BASE}_functions.tsv"
+
+echo "Exporting functions for ${BASE}"
+/rs1/shares/brc/users/cysteger/conda_envs/anvio_env/bin/anvi-export-functions \
+    -c "${DB}" -o "${OUTFILE}"
+echo "Finished ${BASE}"
