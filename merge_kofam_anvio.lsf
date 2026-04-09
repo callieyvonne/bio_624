@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#BSUB -J "merge_kofams"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=8]"
+#BSUB -W 02:00
+#BSUB -q long
+#BSUB -o merge_kofams.%J.out
+#BSUB -e merge_kofams.%J.err
+
+# Directory containing all *_functions.tsv files
+FUNC_DIR="/rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/functions"
+
+cd "${FUNC_DIR}"
+
+OUT="all_MAG_functions.tsv"
+
+# Write header
+echo -e "MAG\tgene_callers_id\tkofam_id\tfunction\te_value" > "${OUT}"
+
+# Loop through all MAG function files
+for f in *_functions.tsv
+do
+    MAG=$(basename "$f" _functions.tsv)
+
+    awk -v MAG="$MAG" -F'\t' '
+        NR>1 && $2=="KOfam" {
+            print MAG "\t" $1 "\t" $3 "\t" $4 "\t" $5
+        }
+    ' "$f" >> "${OUT}"
+done
