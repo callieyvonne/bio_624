@@ -1,0 +1,14 @@
+#!/bin/bash
+#BSUB -J "bowtie2_index"
+#BSUB -n 4
+#BSUB -R "rusage[mem=16]"
+#BSUB -W 08:00
+#BSUB -q long
+#BSUB -o index.%J.out
+#BSUB -e index.%J.err
+
+BOWTIE2_BUILD=/rs1/shares/brc/users/cysteger/conda_envs/coverm_env/bin/bowtie2-build
+
+cd /rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis
+
+$BOWTIE2_BUILD all_MAGs.fa all_MAGs
