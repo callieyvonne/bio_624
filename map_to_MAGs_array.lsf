@@ -1,0 +1,47 @@
+#!/bin/bash
+
+#BSUB -J "mapMAGs[1-19]"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=8]"
+#BSUB -W 120:00
+#BSUB -q long
+#BSUB -o mapMAGs.%J.%I.out
+#BSUB -e mapMAGs.%J.%I.err
+
+# Tools
+BOWTIE2=/rs1/shares/brc/users/cysteger/conda_envs/coverm_env/bin/bowtie2
+SAMTOOLS=/rs1/shares/brc/users/cysteger/conda_envs/coverm_env/bin/samtools
+
+# Directories
+SAMPLE_LIST="/rs1/shares/brc/users/c_s_group_3/callie_analysis/sample_list.txt"
+
+READ_DIR_R1="/rs1/shares/brc/users/c_s_group_3/NRE_MetaG_pre_post_florence/NRE_postFlo_MetaG_RAW/NVS139B_Paerl_R1"
+READ_DIR_R2="/rs1/shares/brc/users/c_s_group_3/NRE_MetaG_pre_post_florence/NRE_postFlo_MetaG_RAW/NVS139B_Paerl_R2"
+
+INDEX="/rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/all_MAGs_unique"
+
+OUTDIR="/rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/bam_files"
+mkdir -p $OUTDIR
+
+# Load sample name for this array index
+SAMPLE=$(sed -n "${LSB_JOBINDEX}p" $SAMPLE_LIST)
+
+# Input FASTQs
+R1="$READ_DIR_R1/${SAMPLE}_R1_001.fastq.gz"
+R2="$READ_DIR_R2/${SAMPLE}_R2_001.fastq.gz"
+
+# Output BAM
+BAM="$OUTDIR/${SAMPLE}.bam"
+
+echo "Mapping sample: $SAMPLE"
+echo "R1: $R1"
+echo "R2: $R2"
+echo "Output BAM: $BAM"
+
+# Bowtie2 mapping ? samtools sort ? index
+$BOWTIE2 -x $INDEX -1 $R1 -2 $R2 --threads 16 \
+    | $SAMTOOLS view -bS - \
+    | $SAMTOOLS sort -o $BAM -
+
+$SAMTOOLS index $BAM
