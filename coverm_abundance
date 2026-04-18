@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#BSUB -J "coverm_MAG_genome"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=16]"
+#BSUB -W 2:00
+#BSUB -q short
+#BSUB -o coverm.%J.out
+#BSUB -e coverm.%J.err
+
+COVERM=/rs1/shares/brc/users/cysteger/conda_envs/coverm_env/bin/coverm
+
+BAM_DIR="/rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/bam_files"
+MAG_DIR="/rs1/shares/brc/users/c_s_group_3/NRE_MetaG_bins/MAGs_renamed"
+OUT="/rs1/shares/brc/users/c_s_group_3/callie_analysis/anvio_analysis/coverm_MAG_relative_abundance.tsv"
+
+$COVERM genome \
+    --bam-files $BAM_DIR/*.bam \
+    --genome-fasta-directory $MAG_DIR \
+    --genome-fasta-extension .fa \
+    --threads 8 \
+    --methods relative_abundance \
+    --min-read-percent-identity 95 \
+    --output-file "$OUT"
